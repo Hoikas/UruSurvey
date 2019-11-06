@@ -70,6 +70,24 @@ def _bar_graph_responses(db, output, question=-1, key="unknown", title="unknown"
     else:
         fig.show()
 
+def _pie_chart_responses(db, output, question=-1, title="unknown"):
+    print("Collecting data...")
+    counter = collections.Counter()
+    counter.update(_iter_responses(db, question))
+
+    print("Generating graph...")
+    import plotly
+    import plotly.graph_objects as go
+
+    fig = go.Figure(data=go.Pie(labels=list(counter.keys()),
+                                values=list(counter.values()),
+                                hole=0.3),
+                    layout_title_text=title)
+    if output:
+        plotly.offline.plot(fig, filename=str(output))
+    else:
+        fig.show()
+
 def _print_help(db=None, output=None):
     options = ",".join(subcommands.keys())
     print(f"Graph commands: {options}")
@@ -87,6 +105,55 @@ subcommands = {
                                       key="Game", title="Online Games Played"),
     "tools_used": functools.partial(_bar_graph_responses, question=27,
                                     key="Tool", title="Tools Used in Age Creation"),
+    "max_versions": functools.partial(_bar_graph_responses, question=35,
+                                      key="Version", title="Max Users: 3ds Max Versions"),
+
+    # Simple pie charts
+    "language": functools.partial(_pie_chart_responses, question=0,
+                                  title="Native Language"),
+    "i10n_english": functools.partial(_pie_chart_responses, question=1,
+                                      title="Comfort Playing in English"),
+    "i10n_preference": functools.partial(_pie_chart_responses, question=2,
+                                         title="Prefer to Play in Native Language"),
+    "i10n_volunteer": functools.partial(_pie_chart_responses, question=3,
+                                        title="Willingness to Help Translate"),
+    "os": functools.partial(_pie_chart_responses, question=4, title="OS Preference"),
+    "mac_difficulty": functools.partial(_pie_chart_responses, question=5,
+                                        title="Mac Difficulty in Playing URU"),
+    "mac_problems": functools.partial(_pie_chart_responses, question=6,
+                                      title="Mac Problems When Playing URU"),
+    "mac_method": functools.partial(_pie_chart_responses, question=7,
+                                    title="Method Used to Play URU on Macs"),
+    "uru_favorite": functools.partial(_pie_chart_responses, question=9,
+                                      title="Favorite Aspect of Playing URU"),
+    "clients": functools.partial(_pie_chart_responses, question=11,
+                                 title="Nonstandard Client Usage"),
+    "sl": functools.partial(_pie_chart_responses, question=12,
+                            title="Second Life Players"),
+    "sl_or_uru": functools.partial(_pie_chart_responses, question=14,
+                                   title="Which Game is Played More Frequently"),
+    "sl_content_creation": functools.partial(_pie_chart_responses, question=16,
+                                             title="SL Content Creation"),
+    "uru_fan_visits": functools.partial(_pie_chart_responses, question=18,
+                                        title="URU Fan Content Usage"),
+    "uru_fan_age": functools.partial(_pie_chart_responses, question=24,
+                                     title="Favorite URU Fan Age"),
+    "uru_age_creation": functools.partial(_pie_chart_responses, question=25,
+                                          title="Fan Age Creation"),
+    "uru_fan_age_publish": functools.partial(_pie_chart_responses, question=26,
+                                             title="Interest in Seeing Their Content Online"),
+    "uru_favorite_tool": functools.partial(_pie_chart_responses, question=28,
+                                           title="Most Frequently Used Age Creation Tool"),
+    "max_experienced": functools.partial(_pie_chart_responses, question=30,
+                                         title="Used 3ds Max Before URU"),
+    "max_upgrade": functools.partial(_pie_chart_responses, question=32,
+                                     title="Wants an Update 3ds Max Plugin Binary"),
+    "max_blender_used": functools.partial(_pie_chart_responses, question=33,
+                                          title="3ds Max Users: Last Version of Blender Used"),
+    "korman_priority": functools.partial(_pie_chart_responses, question=38,
+                                         title="Korman Development Priority"),
+    "pyprp_new_blender": functools.partial(_pie_chart_responses, question=41,
+                                           title="PyPRP Users: Used a Newer Blender Version"),
 }
 
 def main(args):
