@@ -20,15 +20,15 @@ from _utils import *
 requires_valid_db = True
 
 def _sanitize_by_question(db, i, show_all=False):
-    responses = fetch_result(db, "SELECT idx FROM responses WHERE question = ?", (i,))
+    responses = iter_results(db, "SELECT idx FROM responses WHERE question = ?", (i,))
     if responses is None:
         raise RuntimeError(f"Unable to find responses to question {i}")
 
-    for j, response in enumerate(responses):
-        _sanitize_response(db, response[0], print_question=(j==0), show_all=show_all)
+    for j, response in enumerate(response[0] for response in responses):
+        _sanitize_response(db, response, print_question=(j==0), show_all=show_all)
 
 def _sanitize_by_session(db, i, show_all=False):
-    responses = fetch_result(db, "SELECT idx FROM responses WHERE session = ?", (i,))
+    responses = iter_results(db, "SELECT idx FROM responses WHERE session = ?", (i,))
     if responses is None:
         raise RuntimeError(f"Unable to find responses to session {i}")
 
@@ -53,8 +53,8 @@ def _sanitize_response(db, i, **kwargs):
     been_sanitized = response["flags"] & ResponseFlags.sanitized
     valid_response = response["flags"] & ResponseFlags.valid
     if not (kwargs.get("show_all", False) or kwargs.get("force", False)) and \
-           (been_sanitized or not valid_response):
-       return
+           (been_sanitized or valid_response):
+        return
 
     # Probably shouldn't obey show_all because these are dead answers?
     if not kwargs.get("force", False) and not response["original"]:
