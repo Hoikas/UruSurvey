@@ -66,7 +66,7 @@ def _bar_graph_responses(db, output, question=-1, key="unknown", title="unknown"
     data = collections.OrderedDict()
     for data_key, data_value in sorted(counter.items()):
         data.setdefault(key, []).append(data_key)
-        data.setdefault("Percent", []).append(int(data_value / response_count * 100))
+        data.setdefault("Percent", []).append(round((data_value / response_count) * 100, 2))
         data.setdefault("Count", []).append(data_value)
 
     print("Generating graph...")
