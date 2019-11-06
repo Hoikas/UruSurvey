@@ -22,6 +22,11 @@ main_parser.add_argument("--db-path", type=Path, help="survey database file", de
 
 sub_parsers = main_parser.add_subparsers(title="command", dest="command", required=True)
 
+# Graph command
+graph_parser = sub_parsers.add_parser("graph")
+graph_parser.add_argument("--output", type=Path, help="path to output the graph")
+graph_parser.add_argument("subcommand", type=str.lower, nargs="?")
+
 # Question command
 question_parser = sub_parsers.add_parser("questions")
 
