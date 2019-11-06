@@ -47,6 +47,17 @@ def _iter_responses(db, question, split=None):
             else:
                 yield value
 
+def _output_fig(fig, output):
+    import plotly.io
+
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        if output.is_file():
+            output.unlink()
+        plotly.io.write_html(fig, file=str(output), auto_open=False)
+    else:
+        plotly.io.show(fig)
+
 def _bar_graph_responses(db, output, question=-1, key="unknown", title="unknown"):
     print("Collecting data...")
     counter = collections.Counter()
@@ -60,15 +71,12 @@ def _bar_graph_responses(db, output, question=-1, key="unknown", title="unknown"
 
     print("Generating graph...")
     import pandas
-    import plotly, plotly.express
+    import plotly.express
 
     df = pandas.DataFrame(data)
     fig = plotly.express.bar(df, x=key, y="Percent", color="Percent", title=title,
                              hover_name=key, hover_data=["Count"])
-    if output:
-        plotly.offline.plot(fig, filename=str(output))
-    else:
-        fig.show()
+    _output_fig(fig, output)
 
 def _pie_chart_responses(db, output, question=-1, title="unknown"):
     print("Collecting data...")
@@ -76,25 +84,35 @@ def _pie_chart_responses(db, output, question=-1, title="unknown"):
     counter.update(_iter_responses(db, question))
 
     print("Generating graph...")
-    import plotly
     import plotly.graph_objects as go
 
     fig = go.Figure(data=go.Pie(labels=list(counter.keys()),
                                 values=list(counter.values()),
                                 hole=0.3),
                     layout_title_text=title)
-    if output:
-        plotly.offline.plot(fig, filename=str(output))
-    else:
-        fig.show()
+    _output_fig(fig, output)
 
 def _print_help(db=None, output=None):
     options = ",".join(subcommands.keys())
     print(f"Graph commands: {options}")
 
+def _draw_all_graphs(db, output):
+    if not output:
+        raise RuntimeError("Output path must be specified!")
+
+    for name, func in subcommands.items():
+        if name in {"help", "all"}:
+            continue
+
+        path = output.joinpath(name).with_suffix(".html")
+        print()
+        print(f"Outputing '{name}' @ {path}")
+        func(db, path)
+
 # Graphing subcommand handlers...
 subcommands = {
     "help": _print_help,
+    "all": _draw_all_graphs,
 
     # Simple bar graphs
     "shards": functools.partial(_bar_graph_responses, question=8,
@@ -162,10 +180,6 @@ def main(args):
         if subcommand is None:
             _print_help()
             return
-        if args.output:
-            args.output.parent.mkdir(parents=True, exist_ok=True)
-            if args.output.is_file():
-                args.output.unlink()
         with open_database(args.db_path) as db:
             subcommand(db, args.output)
     except ImportError as ex:
