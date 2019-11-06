@@ -23,10 +23,7 @@ from _utils import *
 requires_valid_db = True
 
 def _count_responses(db, question):
-    result = fetch_result(db, "SELECT COUNT(idx) FROM responses WHERE question = ?", (question,))
-    if result is None:
-        raise RuntimeError(f"Could not count responses to question {question}")
-    return result[0]
+    return sum((1 if i else 0 for i in _iter_responses(db, question)))
 
 def _iter_responses(db, question, split=None):
     q = """SELECT flags,
