@@ -89,6 +89,51 @@ def _pie_chart_responses(db, output, question=-1, title="unknown"):
                     layout_title_text=title)
     _output_fig(fig, output)
 
+def _sunburst_os(db, output):
+    print("Collecting data...")
+
+    def generate_os_wrappers():
+        q = """SELECT os_response.value AS os,
+                      wrapper_response.flags AS wrapper_flags,
+                      wrapper_response.value AS wrapper_original,
+                      wrapper_sanitize.value AS wrapper_sanitized
+               FROM responses os_response
+               LEFT JOIN responses wrapper_response ON wrapper_response.question = 7 AND
+                                                       wrapper_response.session = os_response.session
+               LEFT JOIN sanitize wrapper_sanitize ON wrapper_sanitize.idx = wrapper_response.idx
+               WHERE os_response.question = 4;"""
+        for result in iter_results(db, q):
+            if result["wrapper_flags"] & ResponseFlags.sanitized:
+                wrapper = result["wrapper_sanitized"]
+            else:
+                wrapper = result["wrapper_original"]
+            yield result["os"], wrapper
+            # ensure we count this for the case of the OS in general as well.
+            if wrapper:
+                yield result["os"], ""
+
+    counter = collections.Counter()
+    counter.update(generate_os_wrappers())
+    ids, labels, parents, values = [], [], [], []
+    for (os, wrapper), count in counter.items():
+        if wrapper:
+            ids.append(f"{os} - {wrapper}")
+            labels.append(wrapper)
+            parents.append(os)
+            values.append(count)
+        else:
+            ids.append(os)
+            labels.append(os)
+            parents.append("")
+            values.append(count)
+
+    print("Generating graph...")
+    import plotly.graph_objects as go
+
+    fig = go.Figure(data=go.Sunburst(ids=ids, labels=labels, parents=parents, values=values, branchvalues="total"),
+                    layout_title_text="OS and Wrapper Usage")
+    _output_fig(fig, output)
+
 def _print_help(db=None, output=None):
     options = ",".join(subcommands.keys())
     print(f"Graph commands: {options}")
@@ -110,6 +155,9 @@ def _draw_all_graphs(db, output):
 subcommands = {
     "help": _print_help,
     "all": _draw_all_graphs,
+
+    # Sunbursts
+    "os_detail": _sunburst_os,
 
     # Simple bar graphs
     "shards": functools.partial(_bar_graph_responses, question=8,
