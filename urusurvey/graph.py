@@ -89,6 +89,81 @@ def _pie_chart_responses(db, output, question=-1, title="unknown"):
                     layout_title_text=title)
     _output_fig(fig, output)
 
+def _sunburst_i10n(db, output):
+    print("Collecting data...")
+
+    keys = ["language", "comfort", "prefer", "volunteer"]
+    def generate_data():
+        user = collections.namedtuple("user", keys)
+        q  = """SELECT language_response.flags AS language_flags,
+                       language_response.value AS language_original,
+                       language_sanitize.value AS language_sanitized,
+                       comfort_response.value AS comfort_value,
+                       prefer_response.value AS prefer_value,
+                       volunteer_response.value AS volunteer_value
+                FROM responses language_response
+                LEFT JOIN sanitize language_sanitize ON language_sanitize.idx = language_response.idx
+                LEFT JOIN responses comfort_response ON comfort_response.question = 1 AND
+                                                        comfort_response.session = language_response.session
+                LEFT JOIN responses prefer_response ON prefer_response.question = 2 AND
+                                                       prefer_response.session = language_response.session
+                LEFT JOIN responses volunteer_response ON volunteer_response.question = 3 AND
+                                                          volunteer_response.session = language_response.session
+                WHERE language_response.question = 0;"""
+        for result in iter_results(db, q):
+            if result["language_flags"] & ResponseFlags.sanitized:
+                language = result["language_sanitized"]
+            else:
+                language = result["language_original"]
+            if not language:
+                continue
+            yield user(language, result["comfort_value"], result["prefer_value"], result["volunteer_value"])
+
+    # Probably not the best idea to have all this in memory. Luckily the dataset is not that large.
+    # Ugh. What a mess.
+    data_src = list(generate_data())
+    counters = { key: collections.Counter(((i.language, getattr(i, key)) for i in data_src if getattr(i, key))) for key in keys }
+    languages = counters.pop("language")
+
+    data = collections.defaultdict(list)
+    for key, counter in counters.items():
+        for (language, _), count in languages.items():
+            data[f"{key}_ids"].append(language)
+            data[f"{key}_labels"].append(language)
+            data[f"{key}_values"].append(count)
+            data[f"{key}_parents"].append("Native Language")
+        for (native_language, value), count in counter.items():
+            data[f"{key}_ids"].append(f"{native_language} - {value}")
+            data[f"{key}_labels"].append(value)
+            data[f"{key}_values"].append(count)
+            data[f"{key}_parents"].append(native_language)
+
+    print("Generating graph...")
+    import plotly.graph_objects as go
+
+    buttons = []
+    titles = {
+        "comfort": "Comfortable Playing URU in English",
+        "prefer": "Prefer to Play in Native Language",
+        "volunteer": "Willingness to Volunteer for ULP",
+    }
+    fig = go.Figure()
+    for i, key in enumerate(keys[1:]):
+        fig.add_trace(go.Sunburst(labels=data[f"{key}_labels"], values=data[f"{key}_values"],
+                                  parents=data[f"{key}_parents"], ids=data[f"{key}_ids"],
+                                  branchvalues="total", visible=(i==0), name=key,
+                                  hoverinfo="label+text+value+name+percent parent"))
+        buttons.append({ "label": titles[key],
+                         "method": "update",
+                         "args": [{ "visible": [bool(j==i) for j in range(len(keys[1:]))] },
+                                  { "title": titles[key] }],
+                        })
+        if i == 0:
+            fig.update_layout(title_text=titles[key])
+    fig.update_layout(updatemenus=[go.layout.Updatemenu(type="buttons", direction="up",
+                                                        active=0, buttons=buttons)])
+    _output_fig(fig, output)
+
 def _sunburst_os(db, output):
     print("Collecting data...")
 
@@ -158,6 +233,7 @@ subcommands = {
     "all": _draw_all_graphs,
 
     # Sunbursts
+    "i10n": _sunburst_i10n,
     "os_detail": _sunburst_os,
 
     # Simple bar graphs
