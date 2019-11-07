@@ -124,13 +124,14 @@ def _sunburst_os(db, output):
         else:
             ids.append(os)
             labels.append(os)
-            parents.append("")
+            parents.append("Preferred OS")
             values.append(count)
 
     print("Generating graph...")
     import plotly.graph_objects as go
 
-    fig = go.Figure(data=go.Sunburst(ids=ids, labels=labels, parents=parents, values=values, branchvalues="total"),
+    fig = go.Figure(data=go.Sunburst(ids=ids, labels=labels, parents=parents, values=values,
+                                     branchvalues="total", hoverinfo="label+text+value+name+percent parent"),
                     layout_title_text="OS and Wrapper Usage")
     _output_fig(fig, output)
 
